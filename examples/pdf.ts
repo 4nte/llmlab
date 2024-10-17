@@ -6,13 +6,11 @@ import { ChatOllama } from "@langchain/ollama";
 const spotsieGatewayInstructions = new PDFLoader("../data/spotsie-gateway-instructions.pdf");
 const docs = await spotsieGatewayInstructions.load()
 
-
 // instantiate model for answering
 const llm = new ChatOllama({
 	model: "llama2:13b",
 	temperature: 0,
 });
-
 
 // instantiate embedding model
 import { OllamaEmbeddings } from "@langchain/ollama";
@@ -25,6 +23,7 @@ import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { createStuffDocumentsChain } from "langchain/chains/combine_documents";
 import { createRetrievalChain } from "langchain/chains/retrieval";
 import { MultiQueryRetriever } from "langchain/retrievers/multi_query";
+import { StringOutputParser } from "@langchain/core/output_parsers";
 
 // Split text into overlapping chunks 
 const textSplitter = new RecursiveCharacterTextSplitter({
@@ -84,5 +83,6 @@ const ragChain = await createRetrievalChain({
 // })
 
 const question = process.argv[2]
-console.log(await ragChain.invoke({input: question}))
+const res = await ragChain.invoke({input: question})
+console.log("answer", res.answer)
 

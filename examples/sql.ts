@@ -8,6 +8,21 @@ import { ChatOllama } from "@langchain/ollama";
 
 // questions yielding good responses
 const goodquestions = ["who are the top 8 most productive employees and why?" ]
+// const questions = [
+//
+// 	"Where was employee id 1 on 01.01.2024 between 16:00 and 18:00",
+//   "Tko su tri najproduktivnija zaposlenika?",
+//   "Tko su tri najproduktivnija zaposlenika, i koliko vremena je svatko od njih proveo u zonama?",
+// 	"Who are the 3 most productive employees?",
+// 	"Who are the 3 least productive employees?",
+// 	"Where was employee id 1 at 01.01 at 12pm",
+// 	"Find 3 least productive employees and explain why they are least productive.",
+// 	"How productive was employee with id 1 during mondays?",
+// 	"How productive was employee with id 1 during tuesdays?",
+// 	"What locatons are most visited on fridays?",
+// 	"what is the single most visited location on monday?",
+// 	"what was the longest stay in a location and by what employee?"
+// ]
 
  const question = Bun.argv[2]
 
@@ -36,24 +51,7 @@ Employee location history is stored as a series of location_span rows, each row 
 Productivity of employee is proportional to the total duration of their stay in any of the locations. The more time an employee has spent in any of the locations, higher their productivity. 	
 `
 
-// const questions = [
-//
-// 	"Where was employee id 1 on 01.01.2024 between 16:00 and 18:00",
-//   "Tko su tri najproduktivnija zaposlenika?",
-//   "Tko su tri najproduktivnija zaposlenika, i koliko vremena je svatko od njih proveo u zonama?",
-// 	"Who are the 3 most productive employees?",
-// 	"Who are the 3 least productive employees?",
-// 	"Where was employee id 1 at 01.01 at 12pm",
-// 	"Find 3 least productive employees and explain why they are least productive.",
-// 	"How productive was employee with id 1 during mondays?",
-// 	"How productive was employee with id 1 during tuesdays?",
-// 	"What locatons are most visited on fridays?",
-// 	"what is the single most visited location on monday?",
-// 	"what was the longest stay in a location and by what employee?"
-// ]
-
-const prompt =
-		PromptTemplate.fromTemplate(`Based on the provided SQL table schema below and context, write a SQL query that would answer the user's question. The response must be a valid postgres SQL query. 
+const prompt = PromptTemplate.fromTemplate(`Based on the provided SQL table schema below and context, write a SQL query that would answer the user's question. The response must be a valid postgres SQL query. 
 ------------
 CONTEXT: ${context}
 ------------
@@ -62,25 +60,25 @@ SCHEMA: {schema}
 QUESTION: {question}
 ------------
 SQL QUERY:`);
-	/**
-	 * Create a new RunnableSequence where we pipe the output from `db.getTableInfo()`
-	 * and the users question, into the prompt template, and then into the llm.
-	 * We're also applying a stop condition to the llm, so that it stops when it
-	 * sees the `\nSQLResult:` token.
-	 */
-	const sqlQueryChain = RunnableSequence.from([
-		{
-			schema: async () => db.getTableInfo(),
-			question: (input: { question: string }) => input.question,
-		},
-		prompt,
-		llm.bind({ stop: ["\nSQLResult:"] }),
-		new StringOutputParser(),
-	]);
+/**
+ * Create a new RunnableSequence where we pipe the output from `db.getTableInfo()`
+ * and the users question, into the prompt template, and then into the llm.
+ * We're also applying a stop condition to the llm, so that it stops when it
+ * sees the `\nSQLResult:` token.
+ */
+const sqlQueryChain = RunnableSequence.from([
+	{
+		schema: async () => db.getTableInfo(),
+		question: (input: { question: string }) => input.question,
+	},
+	prompt,
+	llm.bind({ stop: ["\nSQLResult:"] }),
+	new StringOutputParser(),
+]);
 
-	/**
-	 * Create the final prompt template which is tasked with getting the natural language response.
-	 */
+/**
+ * Create the final prompt template which is tasked with getting the natural language response.
+ */
 const finalResponsePrompt = PromptTemplate.fromTemplate(`You are a worker coordinator. Based on the table schema below and context, question, SQL query, and SQL response, write a natural language response explaining the answer thorougly and backing it up with numbers. If answer refers to multiple employees, include details and numbers for each employee if possible:,
 ------------
 CONTEXT: ${context}
@@ -119,4 +117,5 @@ const finalChain = RunnableSequence.from([
 const finalResponse = await finalChain.invoke({
 	question,
 });
+console.log('finalResponse', finalResponse)
 
